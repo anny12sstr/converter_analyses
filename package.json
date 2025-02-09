@@ -9,8 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.744.0",
     "@google/generative-ai": "^0.21.0",
     "dotenv": "^16.4.7",
+    "firebase": "^11.3.0",
     "mammoth": "^1.9.0",
     "multer": "^1.4.5-lts.1",
     "next": "15.1.6",

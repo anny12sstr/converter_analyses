@@ -20,25 +20,43 @@ const TableConverter = () => {
             return;
         }
 
-        const formData = new FormData();
-        formData.append('universalFile', file);
-
         try {
-            const response = await fetch('/api/convert-to-table', {
-                method: 'POST',
-                body: formData,
+            // 1. Get Pre-signed URL
+            const uploadResponse = await fetch(`/api/generate-upload-url?filename=${file.name}`);
+            if (!uploadResponse.ok) {
+                throw new Error('Failed to get upload URL');
+            }
+            const uploadData = await uploadResponse.json();
+            const uploadURL = uploadData.uploadURL;
+            const objectURL = uploadData.objectURL;
+
+            // 2. Upload to R2
+            const uploadResult = await fetch(uploadURL, {
+                method: 'PUT',
+                body: file,
+                headers: {
+                    'Content-Type': file.type,
+                },
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                if (errorData && errorData.error) {
-                    errorMessage += `. Message: ${errorData.error}`;
-                }
-                throw new Error(errorMessage);
+            if (!uploadResult.ok) {
+                throw new Error('Failed to upload to R2');
             }
 
-            const data = await response.json();
+            // 3. Process the file using another API function
+            const processResponse = await fetch('/api/process-file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ objectURL }),
+            });
+
+            if (!processResponse.ok) {
+                throw new Error('Failed to process file');
+            }
+
+            const data = await processResponse.json();
             if (data.table) {
                 setTableHTML(data.table);
             } else {
@@ -77,25 +95,25 @@ const TableConverter = () => {
 
     // Predefined CSS styles for the table
     const tableStyles = `
-    <style>
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
+        <style>
+            table {
+                border-collapse: collapse;
+                width: 100%;
+            }
 
-        th,
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
+            th,
+            td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }
 
-        th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-    </style>
-`;
+            th {
+                background-color: #f2f2f2;
+                font-weight: bold;
+            }
+        </style>
+    `;
 
     return (
         <div className="container">
