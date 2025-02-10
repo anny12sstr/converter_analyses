@@ -1,4 +1,3 @@
-import multer from 'multer';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'node:fs';
 import path from 'path';
@@ -10,15 +9,11 @@ dotenv.config();
 
 const apiKey = process.env.GEMINI_API_KEY;
 
-const storage = multer.memoryStorage();
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 },
-});
-
 export const config = {
     api: {
-        bodyParser: false,
+        bodyParser: {
+            sizeLimit: '10mb',
+        }
     },
 };
 
@@ -59,69 +54,40 @@ async function processPdf(buffer) {
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
+        res.setHeader('Content-Type', 'application/json');
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
+     try {
+    const {image} = JSON.parse(req.body)
+    const mimeType = image.split(';')[0].split(':')[1]
+   if (req.method === "POST") {
+    try {
+      const { image } = JSON.parse(req.body)
+      const contentType = image.split(';')[0].split(':')[1];
+        const imagePart = {
+            inlineData: {
+                data: image.split(',')[1],
+                mimeType: contentType,
+            },
+        };
+      let file = null;
+      let data = null;
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    await new Promise((resolve, reject) => {
-        upload.single('universalFile')(req, res, async (err) => {
-            if (err) {
-                console.error("Multer error:", err);
-                return res.status(500).json({ error: err.message });
-            }
-
-            if (!req.file) {
-                return res.status(400).json({ error: 'Please upload a file.' });
-            }
-
-            try {
-                const fileBuffer = req.file.buffer;
-                const mimeType = req.file.mimetype;
-                let extractedContent;
-
-                if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mimeType === 'application/msword') {
-                    extractedContent = await processDocx(fileBuffer);
-                } else if (mimeType.startsWith('image/')) {
-                    extractedContent = await processImage(fileBuffer, mimeType);
-                } else if (mimeType === 'application/pdf') {
-                    extractedContent = await processPdf(fileBuffer);
-                } else {
-                    return res.status(400).json({ error: 'Unsupported file type.' });
-                }
-
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-                let prompt = `Convert the following content into a single, long, scrollable HTML table. Ensure all data is accurately represented. Do not add any extra text or headers. Focus solely on the tabular data.`;
-                 if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mimeType === 'application/msword') {
-                    prompt = `Convert ONLY the medical analysis results section from the following Word document into a single, long, scrollable HTML table. Ensure flawless accuracy. Focus EXCLUSIVELY on the tabular data. Do not include any text that is NOT part of the results table. The table must be vertically scrollable.`;
-                } else if (mimeType === 'application/pdf') {
-                    prompt = `Extract the tabular data from the following PDF document and convert it into a single, long, scrollable HTML table. Ensure that all rows and columns are accurately represented. Focus solely on the tabular data. Do not add extra text, headers, or footers.`;
-                }
-
-
-                const result = await model.generateContent([prompt, extractedContent]);
-                let responseText = result.response.text();
-
-                let tableHTML = responseText;
-                const tableStartTag = "<table";
-                const tableEndTag = "</table>";
-
-                const startIndex = tableHTML.toLowerCase().indexOf(tableStartTag.toLowerCase());
-                const endIndex = tableHTML.toLowerCase().lastIndexOf(tableEndTag.toLowerCase());
-
-                if (startIndex !== -1 && endIndex !== -1) {
-                    tableHTML = tableHTML.substring(startIndex, endIndex + tableEndTag.length);
-                }
-
-
-                res.status(200).json({ table: tableHTML });
-
-            } catch (error) {
-                console.error("Error processing file:", error);
-                res.status(500).json({ error: 'Failed to process file and get table.' });
-            } finally {
-                resolve();
-            }
-        });
-    });
+      const result = await model.generateContent([
+        `Convert all the data from image to a single big HTML table code`,
+        imagePart,
+      ]);
+        console.log("result: ", result)
+      data = result.response.text();
+      res.status(200).json({ data });
+    } catch (err) {
+      console.log("CATCH", err);
+      res.status(500).json({ err: "Failed!" });
+    }
+  }
+} catch (e) {
+    console.log(e);
+  }
 }
