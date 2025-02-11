@@ -11,25 +11,11 @@ const apiKey = process.env.GEMINI_API_KEY;
 
 export const config = {
     api: {
-        bodyParser: true,
+        bodyParser: {
+            sizeLimit: '10mb',
+        }
     },
 };
-
-async function fetchFileContent(objectURL) {
-    try {
-        const response = await fetch(objectURL);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        return buffer;
-    } catch (error) {
-        console.error("Error fetching file:", error);
-        throw new Error("Failed to fetch file");
-    }
-}
 
 async function processDocx(buffer) {
     try {
@@ -99,7 +85,7 @@ export default async function handler(req, res) {
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-                let prompt = `Convert the data into a single, long, scrollable HTML table. Importantly: Do not include any checkboxes. Ensure that the HTML table includes borders.`;
+        let prompt = `Convert the data into a single, long, scrollable HTML table. Importantly: Do not include any checkboxes. Ensure that the HTML table includes borders.`;
          if (fileExtension === '.docx' || fileExtension === '.doc') {
             prompt = `Convert ONLY the medical analysis results section from the following Word document into a single, long, scrollable HTML table. Ensure flawless accuracy. Focus EXCLUSIVELY on the tabular data. Do not include any text that is NOT part of the results table. The table must be vertically scrollable. Do not include any checkboxes. Ensure that the HTML table includes borders.`;
         } else if (fileExtension === '.pdf') {

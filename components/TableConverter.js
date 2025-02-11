@@ -1,9 +1,12 @@
 import { useState, useRef } from 'react';
+import { CheckCircle, Copy } from 'lucide-react';
+import { FileCheck } from 'lucide-react';
 
 const TableConverter = () => {
     const [tableHTML, setTableHTML] = useState('');
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+    const [copied, setCopied] = useState(false);
     const fileInputRef = useRef(null);
 
     const handleSubmit = async (event) => {
@@ -21,254 +24,159 @@ const TableConverter = () => {
         }
 
         try {
-            // Call API with the download URL
-            const uploadResponse = await fetch('/api/generate-upload-url', {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/convert-to-table', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    image: await toBase64(file),
-                })
+                body: formData,
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                if (errorData && errorData.error) {
-                    errorMessage += `. Message: ${errorData.error}`;
-                }
-                throw new Error(errorMessage);
+                const errorText = await response.text();
+                throw new Error(`Помилка обробки файлу: ${response.status} ${errorText}`);
             }
 
             const data = await response.json();
             if (data.table) {
                 setTableHTML(data.table);
             } else {
-                setErrorMessage("Failed to get table from file.");
+                setErrorMessage("Не вдалося отримати таблицю з файлу.");
             }
         } catch (error) {
-            console.error("Error:", error);
             setErrorMessage(error.message);
         } finally {
             setLoading(false);
         }
     };
 
-    const copyTableToClipboard = () => {
-        const table = document.querySelector('#tableOutput table');
-
-        if (!table) {
-            alert("Немає таблиці для копіювання.");
-            return;
+    const handleCopyTable = async () => {
+        try {
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': new Blob([tableHTML], { type: 'text/html' }),
+                }),
+            ]);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy table:', err);
         }
+    };
 
-        const tableHTML = table.outerHTML;
+    // Parsing the table's HTML to get the headers and rows
+    const parseTableHTML = (html) => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const headers = Array.from(doc.querySelectorAll('th')).map(th => th.innerText);
+        const rows = Array.from(doc.querySelectorAll('tr')).slice(1).map(tr => 
+            Array.from(tr.querySelectorAll('td')).map(td => td.innerText)
+        );
+        return { headers, rows };
+    };
 
-        function listener(e) {
-            e.clipboardData.setData("text/html", tableHTML);
-            e.clipboardData.setData("text/plain", table.innerText);
-            e.preventDefault();
-        }
+    const { headers, rows } = tableHTML ? parseTableHTML(tableHTML) : { headers: [], rows: [] };
 
-        document.addEventListener("copy", listener);
-        document.execCommand("copy");
-            function listener(e) {
-                e.clipboardData.setData("text/html", tableHTML);
-                e.clipboardData.setData("text/plain", table.innerText);
-                e.preventDefault();
-            }
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100">
+            <div className="container mx-auto px-4 py-8">
+                <header className="text-center mb-12">
+                    <h1 className="text-4xl font-bold text-indigo-900 mb-4">Конвертер Таблиць</h1>
+                    <p className="text-slate-600 max-w-2xl mx-auto mb-4">
+                        Конвертуйте ваші документи та зображення в структуровані таблиці.
+                        Підтримка PDF, DOC та зображень.
+                    </p>
+                </header>
 
-            document.addEventListener("copy", listener);
-            document.execCommand("copy");
-            document.removeEventListener("copy", listener);
-
-            alert("Таблицю скопійовано в буфер обміну!");
-        };
-       const toBase64 = (file) => {
-        return new Promise((resolve, reject) => {
-          const fileReader = new FileReader();
-          fileReader.readAsDataURL(file);
-          fileReader.onload = () => {
-              resolve(fileReader.result);
-          };
-          fileReader.onerror = (err) => {
-            reject(err);
-          };
-        });
-      };
-
-        // Predefined CSS styles for the table
-        const tableStyles = `
-            <style>
-                table {
-                    border-collapse: collapse;
-                    width: 100%;
-                }
-
-                th,
-                td {
-                    border: 1px solid #ddd;
-                    padding: 8px;
-                    text-align: left;
-                }
-
-                th {
-                    background-color: #f2f2f2;
-                    font-weight: bold;
-                }
-            </style>
-        `;
-
-        return (
-            <div className="container">
-                <h1 className="title">Table Converter</h1>
-                <h2 className="subtitle">Convert to Table</h2>
-                <form onSubmit={handleSubmit}>
-                    <input
-                        type="file"
-                        id="universalFile"
-                        name="universalFile"
-                        accept=".docx, .doc, image/png, image/jpeg, image/jpg, image/webp, .pdf"
-                        ref={fileInputRef}
-                        className="file-input"
-                    />
-                    <br />
-                    <br />
-                    <button type="submit" disabled={loading} className="button">
-                        {loading ? 'Converting...' : 'Convert to Table'}
-                    </button>
-                </form>
-
-                {loading && (
-                    <div className="loading-overlay">
-                        <div class="loading-spinner"></div>
+                <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-indigo-200 rounded-lg bg-indigo-50/50 p-6 mb-4">
+                        <label className="relative cursor-pointer mb-4">
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept=".docx, .doc, image/png, image/jpeg, image/jpg, image/webp, .pdf"
+                                ref={fileInputRef}
+                                onChange={handleSubmit}
+                            />
+                            <span className="inline-flex items-center px-8 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                                <FileCheck className="w-5 h-5 mr-2" />
+                                Вибрати файл
+                            </span>
+                        </label>
+                        <p className="text-sm text-slate-600">Підтримувані формати: PDF, DOC, DOCX, JPG, PNG</p>
                     </div>
-                )}
 
-                {errorMessage && <div class="error-message">{errorMessage}</div>}
+                    {loading && (
+                        <div className="flex items-center justify-center py-12 mb-4">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                        </div>
+                    )}
 
-                <div id="tableOutput" dangerouslySetInnerHTML={{ __html: tableStyles + tableHTML }} className="table-output" />
+                    {errorMessage && <div className="error-message text-red-500 text-center mb-4">{errorMessage}</div>}
 
-                {tableHTML && (
-                    <button id="copyTableButton" onClick={copyTableToClipboard} className="button">
-                        Copy Table
-                    </button>
-                )}
+                    <div className="overflow-hidden mb-4">
+                        {/* Excel-like table */}
+                        {rows.length > 0 && ( 
+                            <div className="overflow-x-auto border border-gray-200 rounded-lg mb-4">
+                                <div className="min-w-full inline-block align-middle">
+                                    <div className="overflow-hidden">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            {/* Headers */}
+                                            <thead className="bg-indigo-600 text-white">
+                                                <tr>
+                                                    {headers.map((header, index) => (
+                                                        <th
+                                                            key={index}
+                                                            className="px-4 py-3 text-left text-xs font-medium border-r border-gray-200"
+                                                        >
+                                                            {header}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            {/* Table body */}
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {rows.map((row, rowIndex) => (
+                                                    <tr
+                                                        key={rowIndex}
+                                                        className="hover:bg-blue-50 transition-colors"
+                                                    >
+                                                        {row.map((cell, cellIndex) => (
+                                                            <td
+                                                                key={cellIndex}
+                                                                className="px-4 py-3 text-sm text-gray-900 border-r border-gray-200"
+                                                            >
+                                                                {cell}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                <style jsx>{`
-                    .container {
-                        max-width: 800px;
-                        margin: 20px auto;
-                        padding: 20px;
-                        background-color: #f9f9f9;
-                        border-radius: 8px;
-                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-                        font-family: 'Arial', sans-serif;
-                        color: #333;
-                    }
-
-                    .title {
-                        text-align: center;
-                        color: #2563eb;
-                    }
-
-                    .subtitle {
-                        color: #4b5563;
-                        margin-bottom: 15px;
-                    }
-
-                    .file-input {
-                        margin-bottom: 15px;
-                        padding: 10px;
-                        border: 1px solid #d1d5db;
-                        border-radius: 4px;
-                        width: 100%;
-                        box-sizing: border-box;
-                        background-color: #fff;
-                    }
-
-                    .button {
-                        background-color: #2563eb;
-                        color: white;
-                        padding: 10px 20px;
-                        border: none;
-                        border-radius: 5px;
-                        cursor: pointer;
-                        transition: background-color 0.3s ease;
-                    }
-
-                    .button:hover {
-                        background-color: #1e40af;
-                    }
-
-                    .button:disabled {
-                        background-color: #9ca3af;
-                        cursor: not-allowed;
-                    }
-
-                    .loading-overlay {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background-color: rgba(255, 255, 255, 0.7);
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        z-index: 1000;
-                    }
-
-                    .loading-spinner {
-                        border: 4px solid rgba(0, 0, 0, 0.3);
-                        border-top: 4px solid #2563eb;
-                        border-radius: 50%;
-                        width: 50px;
-                        height: 50px;
-                        animation: spin 1s linear infinite;
-                    }
-
-                    @keyframes spin {
-                        0% {
-                            transform: rotate(0deg);
-                        }
-                        100% {
-                            transform: rotate(360deg);
-                        }
-                    }
-
-                    .error-message {
-                        color: #dc2626;
-                        margin-top: 10px;
-                    }
-
-                    .table-output {
-                        margin-top: 20px;
-                    }
-
-                    .table-output table {
-                        border-collapse: collapse;
-                        width: 100%;
-
-                    }
-
-                    .table-output th,
-                    .table-output td {
-                        border: 1px solid #94a3b8;
-                        padding: 8px;
-                        text-align: left;
-                    }
-
-                    .table-output th {
-                        background-color: #e5e7eb;
-                        color: #374151;
-                    }
-
-                    .form-group {
-                        margin-bottom: 20px;
-                    }
-                `}</style>
+                        {/* The copy button appears only if there are rows in the table */}
+                        {rows.length > 0 && (
+                            <div className="mb-4">
+                                <button
+                                    onClick={handleCopyTable}
+                                    className="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors"
+                                >
+                                    {copied ? (
+                                        <CheckCircle className="w-5 h-5 mr-2" />
+                                    ) : (
+                                        <Copy className="w-5 h-5 mr-2" />
+                                    )}
+                                    {copied ? 'Скопійовано!' : 'Скопіювати Таблицю'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
