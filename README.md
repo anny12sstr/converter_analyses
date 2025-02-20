@@ -1,40 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# Medical Test Table Converter
+
+## Overview
+
+This Next.js application is designed to extract medical test results from various document formats (PDF, DOCX, and images) and convert them into structured, editable tables. It uses the Google Gemini API to intelligently detect and extract tabular data related to medical tests from downloaded files.
+
+**Key features:**
+
+* **Different Format Support:** Accepts medical reports in PDF, DOCX, JPG, PNG and WebP formats.
+* **Intelligent Data Extraction:** Uses the Google Gemini API to extract exactly the results of medical tests, ignoring irrelevant text.
+* **Structured tabular output:** Converts extracted data into a clean, user-friendly tabular format with headers and rows.
+* **Editable Tables:** Allows users to edit extracted table data directly in the browser.
+* **Copy to Clipboard:** Allows users to copy the generated table as HTML to the clipboard for easy pasting into documents or reports.
+* **Drag and drop file support:** Users can drag and drop files for fast download.
+
+## Work demonstration
+
+(public/2025-02-2017.22.48-ezgif.com-video-to-gif-converter.gif)
+
+## Technologies used
+
+* **Next.js:** React framework for creating server-side web applications.
+* **React:** JavaScript library for creating user interfaces.
+* **Tailwind CSS:** Utility-first CSS styling framework.
+* **Google Gemini API:** AI model used to extract information from documents.
+* **`@google/generative-ai`:** Google Generative AI SDK to interact with Gemini API.
+* **`dotenv`:** To load environment variables (API key).
+* **`mammoth`:** To extract text from DOCX files.
+* **`pdf-parse`:** To extract text from PDF files.
+* **`multer`:** Middleware for handling file uploads.
+* **`lucide-react`:** Icon library for React.
 
 ## Getting Started
 
-First, run the development server:
+To run this project locally, you need to follow a few steps. Make sure you have **Node.js** (version 18 or higher recommended) and **npm** or **yarn** installed on your machine.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. **Clone the repository:**
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+    ```bash
+    git clone [repository-url]
+    cd [repository-directory]
+    ```
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+    *Replace `[repository-url]` with the URL of your repository and `[repository-directory]` with the name of the folder you are cloning the repository into.*
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+2. **Install dependencies:**
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+    Go to the folder with the cloned repository in the terminal and install the necessary packages:
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
+3. **Start the development server:**
 
-## Learn More
+    ```bash
+    npm run dev
+    # or
+    yarn dev
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+    Open [http://localhost:3000] in your browser to see the app running.
